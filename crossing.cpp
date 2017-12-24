@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <vector>
 #include <math.h>
+//#include <point2i.H>
 using namespace cv;
 using namespace std;
 //global
@@ -19,8 +20,8 @@ int i = 10;
 int thres_inter = 50;
 int lmin = 50;
 int dmax = 10;
-int min_size = 4;
-int max_diff = 5;
+int mincluster_size = 4;
+int maxcluster_diff = 5;
 vector<vector<int> > cluster;
 vector<vector<int> > cluster_point;
 void clusterise(std::vector<float> a, std::vector<int> b,float diff)
@@ -50,8 +51,47 @@ void clusterise(std::vector<float> a, std::vector<int> b,float diff)
 			v.clear();
 			u.clear();	
 		}
+	
 	}
+	cout<<"no. of clusters = "<<cluster.size()<<"\n";
+/**	cout<<"the values in the clusters are :"<<endl;
+	for(i=0;i<u.size();i++)
+	{
+
+	}*/
 }
+
+void cluster_filter(vector<vector<int> > &a,vector<vector<int> > &b,int min_size)
+{
+	vector<vector<int> > d;
+	vector<vector<int> > e;
+	cout<<"each cluster sizes :"<<endl;
+	for(int i=0;i<a.size();i++)
+	{
+		cout<<a[i].size()<<endl;
+	}
+	for(int i=0;i<a.size();i++)
+	{
+		if(a[i].size()>min_size)
+		{
+			d.push_back(a[i]);
+			e.push_back(b[i]);
+			//a.erase(a.begin()+i);
+			//b.erase(b.begin()+i);
+		}
+	
+	}
+	a=d;
+	b=e;
+	cout<<"no. of clusters remained after cluster_filter :"<<cluster.size()<<endl;
+	cout<<"Sizes of the each cluster after filtering are :"<<endl;
+	for(int i=0;i<cluster.size();i++)
+	{
+		cout<<cluster[i].size()<<endl;
+	}
+	
+}
+
 void selectionsort(std::vector<float> &a, std::vector<int> &b)
 {
 	int min_id;
@@ -62,20 +102,18 @@ void selectionsort(std::vector<float> &a, std::vector<int> &b)
 		{
 			if(a[j]<a[min_id])
 				min_id = j;
-			swap(a[min_id],a[i]);
-			swap(b[min_id],b[i]);
+			//swap the elements
 		}
+			
+		swap(a[min_id],a[i]);
+		swap(b[min_id],b[i]);
+		
+		
 	}
-}
-void cluster_filter(vector<vector<int> > &a,vector<vector<int> > &b,int min_size)
-{
+	cout<<"sorted values :"<<endl;
 	for(int i=0;i<a.size();i++)
 	{
-		if(a[i].size()<min_size)
-		{
-			a.erase(a.begin()+i);
-			b.erase(b.begin()+i);
-		}
+		cout<<a[i]<<"\n";
 	}
 }
 
@@ -110,16 +148,17 @@ void hough(int ,void*)
     {
         Vec4i l = linesP[i];
         line( hou, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255,0,0), 3, LINE_AA);
-    	slope.push_back(atan((float)(l[1]-l[3])/(l[0]-l[2])));
+    	slope.push_back(atan((float)(l[1]-l[3])/(l[0]-l[2]))*57.3);
     	pointer.push_back(i);
     }
+	cout<<"no. of houghlines = "<<linesP.size()<<endl;
 	imshow("hough",hou);
 	//sort out the slopes and keep a pointer array
 	selectionsort(slope,pointer);
 	//clusterise into 2 2d vectors 
-	clusterise(slope,pointer,max_diff);
+	clusterise(slope,pointer,maxcluster_diff);
 	//filter the cluster
-	cluster_filter(cluster,cluster_point,min_size);
+	cluster_filter(cluster,cluster_point,mincluster_size);
 	final = img.clone();
 	if (cluster.size()==1)
 	{
@@ -147,9 +186,14 @@ void hough(int ,void*)
 			for(int j=0;j<cluster[i].size();j++)
 			{
 				q = linesP[cluster_point[i][j]];
-				Vec2i extra_temp = ((q[0]+q[2])/2,(q[1]+q[3])/2);
+				Vec2f extra_temp;// = ((q[0]+q[2])/2,(q[1]+q[3])/2);
+				extra_temp[0]=(q[0]+q[2])/2;
+				extra_temp[1]=(q[1]+q[3])/2;
+				cout<<extra_temp[0]<<"\t"<<extra_temp[1]<<endl;
 				mid.push_back(extra_temp);
+			
 			}
+			
 			//bestfit by method of least squares SD from that
 			//define the parameters
 			float m=0;
@@ -162,7 +206,9 @@ void hough(int ,void*)
 			{
 				x1 = x1+mid[k][0];
 				y1 = y1+mid[k][1];
+			
 			}
+			cout<<"x1 = "<<x1<<"y1 = "<<y1<<endl;
 			x1=x1/mid.size();
 			y1=y1/mid.size();
 			for(int k =0;k<mid.size();k++)
@@ -172,25 +218,34 @@ void hough(int ,void*)
 			}
 			m = temp1/temp2;
 			b = y1-m*x1;
+			cout<<"parameters:"<<endl;
+			cout<<"b = "<<b<<"\t"<<"m = "<<m<<endl;
 			//got all the values for best fit
 			//summation of distances
 			for(int k =0;k<mid.size();k++)
 			{
 				temp1 = temp1+abs((m*mid[k][0]-mid[k][1]+b)/sqrt((1+m*m)));
 			}
-			value.push_back(temp1/mid.size());
+			cout<<"temp1 = "<<temp1<<"\t"<<"n = "<<mid.size()<<endl;
+			temp1 = abs(temp1/mid.size());
+			value.push_back(temp1);
 			value_point.push_back(i);
 
 			mid.clear();
 		}
+		
 		selectionsort(value,value_point);
+		cout<<"SD values are :";
+		for(int i=0;i<value.size();i++)
+		{
+			cout<<value[i]<<endl;
+		}
 		//value_point[0] is min cluster number
 		for(int i=0;i<cluster_point[value_point[0]].size();i++)
 		{
 			Vec4i l = linesP[cluster_point[value_point[0]][i]];
         	line( final, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255,0,0), 3, LINE_AA);
-		}
-	
+		}	
 	}
 	imshow("final",final);
 	waitKey(0);
