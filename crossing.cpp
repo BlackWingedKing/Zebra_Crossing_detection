@@ -19,8 +19,40 @@ int i = 10;
 int thres_inter = 50;
 int lmin = 50;
 int dmax = 10;
-
-void selectionsort(std::vector<float> &a,std::vector<int> &b;)
+int min_size = 4;
+int max_diff = 5;
+vector<vector<int> > cluster;
+vector<vector<int> > cluster_point;
+void clusterise(std::vector<float> a, std::vector<int> b,float diff)
+{
+	std::vector<int> v;
+	std::vector<int> u;
+	int r = 0;
+	for (size_t i = 0; i < a.size()-1; i++)
+	{	
+		if (r==0)
+		{
+			v.push_back(a[i]);
+			u.push_back(b[i]);
+		}
+		
+		if (abs(a[i]-a[i+1])<=diff)
+		{
+			v.push_back(a[i+1]);
+			u.push_back(b[i+1]);
+			r=1;
+		}
+		else
+		{
+			r=0;
+			cluster.push_back(v);
+			cluster_point.push_back(u);
+			v.clear();
+			u.clear();	
+		}
+	}
+}
+void selectionsort(std::vector<float> &a, std::vector<int> &b)
 {
 	int min_id;
 	for(size_t i = 0;i<a.size()-1;i++)
@@ -32,6 +64,17 @@ void selectionsort(std::vector<float> &a,std::vector<int> &b;)
 				min_id = j;
 			swap(a[min_id],a[i]);
 			swap(b[min_id],b[i]);
+		}
+	}
+}
+void cluster_filter(vector<vector<int> > &a,vector<vector<int> > &b,int min_size)
+{
+	for(int i=0;i<a.size();i++)
+	{
+		if(a[i].size()<min_size)
+		{
+			a.erase(a.begin()+i);
+			b.erase(b.begin()+i);
 		}
 	}
 }
@@ -70,8 +113,25 @@ void hough(int ,void*)
     	slope.push_back(atan((float)(l[1]-l[3])/(l[0]-l[2])));
     	pointer.push_back(i);
     }
-	selectionsort(slope,pointer);
 	imshow("hough",hou);
+	//sort out the slopes and keep a pointer array
+	selectionsort(slope,pointer);
+	//clusterise into 2 2d vectors 
+	clusterise(slope,pointer,max_diff);
+	//filter the cluster
+	cluster_filter(cluster,cluster_point,min_size);
+	if (cluster.size()==1)
+	{
+		//zebra crossing is that one only
+	}
+	else if(cluster.size()==0)
+	{
+		cout<<"code screwed up";
+	}
+	else if(cluster.size()>1)
+	{
+		//RANSAC
+	}
 	waitKey(0);
 
 }
