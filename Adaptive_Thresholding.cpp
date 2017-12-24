@@ -8,8 +8,8 @@ using namespace std;
 //global variables
 Mat img,adp;
 int max_value = 255;
-int odd_ker = 97;//or 70-97 for gaussian//20-40 for mean
-int ker_size = 1*odd_ker + 3;
+int odd_ker = 48;//
+int ker_size = 2*odd_ker + 3;
 int d = 80;
 int c = d-80;
 void adaptiveThres(int ,void*)
