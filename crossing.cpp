@@ -16,12 +16,12 @@ int odd_ker = 60;//or 70-97 for gaussian//20-40 for mean
 int ker_size = 2*odd_ker + 3;
 int d = 80;
 int c = d-80;
-int i = 10;
+int i = 13;
 int thres_inter = 50;
 int lmin = 50;
 int dmax = 10;
 int mincluster_size = 4;
-int maxcluster_diff = 5;
+int maxcluster_diff = 10;
 vector<vector<int> > cluster;
 vector<vector<int> > cluster_point;
 void clusterise(std::vector<float> a, std::vector<int> b,float diff)
@@ -148,7 +148,15 @@ void hough(int ,void*)
     {
         Vec4i l = linesP[i];
         line( hou, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255,0,0), 3, LINE_AA);
-    	slope.push_back(atan((float)(l[1]-l[3])/(l[0]-l[2]))*57.3);
+    	float g = atan((float)(l[1]-l[3])/(l[0]-l[2]))*57.3;
+    	if(g>=0)
+    	{
+    		slope.push_back(g);
+    	}
+    	else
+    	{
+    		slope.push_back(g+180);
+    	}
     	pointer.push_back(i);
     }
 	cout<<"no. of houghlines = "<<linesP.size()<<endl;
@@ -253,7 +261,7 @@ void hough(int ,void*)
 
 int main()
 {
-	img = imread("8_3.png",0);
+	img = imread("14_4.png",0);
 	namedWindow("adaptiveThreshold",CV_WINDOW_FREERATIO);
 	namedWindow("blur",CV_WINDOW_FREERATIO);
 	namedWindow("canny",CV_WINDOW_FREERATIO);
