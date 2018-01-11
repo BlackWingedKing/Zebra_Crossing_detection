@@ -2,6 +2,11 @@
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
+#include "opencv2/core/core.hpp"
+#include "opencv2/core/utility.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui/highgui.hpp"
+
 #include <iostream>
 #include <algorithm>
 #include <vector>
@@ -15,19 +20,29 @@ int odd_ker = 60;//or 70-97 for gaussian//20-40 for mean
 int ker_size = 2*odd_ker + 3;
 int d = 70;
 int c = d-100;
-int i = 5;
+int i = 2;
 int thres_inter = 50;
-int lmin = 40;
+int lmin = 35;
 int dmax = 5;
-int mincluster_size = 15;
+int mincluster_size = 10;
 int maxcluster_diff = 10;
+int area = 100;
+//for sobel
+int scale = 1;
+int delta = 0;
+int ddepth = CV_16S;
 
-vector<Vec4i> linesP;
+vector<Vec4i> hierarchy;
+vector<vector<Point> > contours;
+
+vector<Vec4f> linesP;
+
 //2D vectors cluster contains a the slope clusters
 //cluster_point acts as a pointer for the cluster
 vector<vector<int> > cluster;
 vector<vector<int> > cluster_point;
 
+Ptr<LineSegmentDetector> ls = createLineSegmentDetector(LSD_REFINE_STD);
 //functions
 //clusterises the given data and feeds into cluster
 void clusterise(std::vector<float> a, std::vector<int> b,float diff)
@@ -265,11 +280,50 @@ void hough(int ,void*)
 	//GaussianBlur(adp,blurr,Size(2*i+1,2*i+1),0,0);
 	imshow("blur",blurr);
 	//canny edge detection
-	Canny(blurr,canny,100,300,3);
+	findContours(blurr, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_NONE);
+	canny = Mat::zeros(blurr.rows, blurr.cols, CV_8UC1);
+	for(int i = 0;i < contours.size(); i++)
+	{
+	if (contourArea(contours[i]) > area )
+		{
+			drawContours(canny, contours, i, Scalar(255),-1);
+			//cout<<"index:"<<i<<"\t"<<hierarchy[i]<<endl;
+		}
+	}
+	imshow("after area thresholding",canny);
+	Canny(canny,canny,100,300,3);
 	imshow("canny",canny);
+	
+	/*//sobel edge detection
+	Mat grad_x, grad_y;
+ 	Mat abs_grad_x, abs_grad_y;
+
+	/// Gradient X
+	//Scharr( src_gray, grad_x, ddepth, 1, 0, scale, delta, BORDER_DEFAULT );
+  	Sobel( blurr, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
+  	convertScaleAbs( grad_x, abs_grad_x );
+
+  	/// Gradient Y
+  	//Scharr( src_gray, grad_y, ddepth, 0, 1, scale, delta, BORDER_DEFAULT );
+  	Sobel( blurr, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
+  	convertScaleAbs( grad_y, abs_grad_y );
+
+  	/// Total Gradient (approximate)
+  	addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, canny );
+  	imshow("sobel",canny);
+	*/
+	//laplacian edge detection
+	/*Laplacian( blurr, canny, CV_16S, 3, 1, 0, BORDER_DEFAULT );
+    convertScaleAbs( canny, canny );
+    imshow("Laplacian edge detection",canny);*/
+	
 	//hough line transfom
 	//vector<Vec4i> linesP;
-	HoughLinesP(canny,linesP,1,CV_PI/180,thres_inter,lmin,dmax );
+	//HoughLinesP(canny,linesP,1,CV_PI/180,thres_inter,lmin,dmax );
+	
+	//LSD detection
+
+	ls->detect(canny, linesP);
 	//drawing the lines
 	hou = img1.clone();
 	//drawing the lines and filling the slopes
@@ -278,11 +332,14 @@ void hough(int ,void*)
 		cout<<"no hough lines";
 	}
 	else{
+	cout<<"No of lines detected are "<<linesP.size()<<endl;
 	for( size_t i = 0; i < linesP.size(); i++ )
     {
-        Vec4i l = linesP[i];
-        line( hou, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255,0,0), 3, LINE_AA);
-    	float g = atan((float)(l[1]-l[3])/(l[0]-l[2]))*57.3;
+        Vec4f l = linesP[i];
+        line( hou, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255,0,0), 0.5, LINE_AA);
+    	//cout<<"pointss are  "<<endl;
+    	//cout<<l[0]<<"\t"<<l[1]<<"\t"<<l[2]<<"\t"<<l[3]<<endl;
+    	float g = atan((float)(l[1]-l[3])/((l[0]-l[2])+0.00000001))*57.3;
     	//convert the angle from (-90,90) to (0,180) 
     	if(g>=0)
     	{
@@ -422,7 +479,7 @@ void hough(int ,void*)
 
 int main()
 {
-	img = imread("8_3.png",1);
+	img = imread("8_2.png",1);
 	img1 = img.clone();
 	imshow("input_image",img);
 	//split the image and send the blue part of the image for adaptive
@@ -442,6 +499,7 @@ int main()
 	createTrackbar("thres_inter","hough",&thres_inter,200,hough);
 	createTrackbar("lmin","hough",&lmin,100,hough);
 	createTrackbar("dmax","hough",&dmax,50,hough);
+	createTrackbar("area","adaptiveThreshold",&area,1000,hough);
 	//initialise the function
 	hough(max_value,0);
 	return 0;
