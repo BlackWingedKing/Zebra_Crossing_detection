@@ -25,9 +25,9 @@ int thres_inter = 50;
 int lmin = 35;
 int dmax = 5;
 int mincluster_size = 10;
-int maxcluster_diff = 10;
+int maxcluster_diff = 8;
 int area = 100;
-//for sobel
+//for sobels
 int scale = 1;
 int delta = 0;
 int ddepth = CV_16S;
@@ -39,7 +39,7 @@ vector<Vec4f> linesP;
 
 //2D vectors cluster contains a the slope clusters
 //cluster_point acts as a pointer for the cluster
-vector<vector<int> > cluster;
+vector<vector<float> > cluster;
 vector<vector<int> > cluster_point;
 
 Ptr<LineSegmentDetector> ls = createLineSegmentDetector(LSD_REFINE_STD);
@@ -47,7 +47,7 @@ Ptr<LineSegmentDetector> ls = createLineSegmentDetector(LSD_REFINE_STD);
 //clusterises the given data and feeds into cluster
 void clusterise(std::vector<float> a, std::vector<int> b,float diff)
 {
-	std::vector<int> v;
+	std::vector<float> v;
 	std::vector<int> u;
 	int r = 0;
 	for (size_t i = 0; i < a.size()-1; i++)
@@ -56,6 +56,7 @@ void clusterise(std::vector<float> a, std::vector<int> b,float diff)
 		{
 			v.push_back(a[i]);
 			u.push_back(b[i]);
+			//cout<<"pushed"<<endl;
 		}
 		
 		if (abs(a[i]-a[i+1])<=diff)
@@ -63,7 +64,9 @@ void clusterise(std::vector<float> a, std::vector<int> b,float diff)
 			v.push_back(a[i+1]);
 			u.push_back(b[i+1]);
 			r=1;
+			//cout<<"pushed1"<<endl;
 		}
+		
 		else
 		{
 			r=0;
@@ -71,20 +74,27 @@ void clusterise(std::vector<float> a, std::vector<int> b,float diff)
 			cluster_point.push_back(u);
 			v.clear();
 			u.clear();	
+			//cout<<"pushed2"<<endl;
 		}
-	
+		
+		if(v.size()==a.size())
+		{
+			cluster.push_back(v);
+			cluster_point.push_back(u);
+			cout<<"All the values are pushed into 1 cluster";
+		}
 	}
-	//`<<"no. of clusters = "<<cluster.size()<<"\n";
-/**	cout<<"the values in the clusters are :"<<endl;
-	for(i=0;i<u.size();i++)
+	cout<<"no. of clusters = "<<cluster.size()<<"\n";
+	/*cout<<"the values in the clusters are :"<<endl;
+	for(int i=0;i<u.size();i++)
 	{
-
+		cout<<cluster[i].size()<<endl;
 	}*/
 }
 //removes the clusters with less than a particular size
-void cluster_filter(vector<vector<int> > &a,vector<vector<int> > &b,int min_size)
+void cluster_filter(vector<vector<float> > &a,vector<vector<int> > &b,int min_size)
 {
-	vector<vector<int> > d;
+	vector<vector<float> > d;
 	vector<vector<int> > e;
 	//cout<<"each cluster sizes :"<<endl;
 	for(int i=0;i<a.size();i++)
@@ -104,12 +114,12 @@ void cluster_filter(vector<vector<int> > &a,vector<vector<int> > &b,int min_size
 	}
 	a=d;
 	b=e;
-	//cout<<"no. of clusters remained after cluster_filter :"<<cluster.size()<<endl;
-	//cout<<"Sizes of the each cluster after filtering are :"<<endl;
+	cout<<"no. of clusters remained after cluster_filter :"<<cluster.size()<<endl;
+	/*cout<<"Sizes of the each cluster after filtering are :"<<endl;
 	for(int i=0;i<cluster.size();i++)
-	{
-		//cout<<cluster[i].size()<<endl;
-	}
+	{ 
+		cout<<cluster[i].size()<<endl;
+	}*/
 	
 }
 //normal sorting function with pointer array sorted
@@ -131,11 +141,13 @@ void selectionsort(std::vector<float> &a, std::vector<int> &b)
 		
 		
 	}
-	//cout<<"sorted values :"<<endl;
+	cout<<"size after selectionsort = "<<a.size()<<endl;
+	/*cout<<"sorted values :"<<endl;
 	for(int i=0;i<a.size();i++)
 	{
-		//cout<<a[i]<<"\n";
-	}
+		cout<<a[i]<<"\n";
+	}*/
+
 }
 
 /*bool line_wise_search(float a,float b)
@@ -344,10 +356,12 @@ void hough(int ,void*)
     	if(g>=0)
     	{
     		slope.push_back(g);
+    		//cout<<g<<endl;
     	}
     	else
     	{
     		slope.push_back(g+180);
+    		//cout<<g+180<<endl;
     	}
     	pointer.push_back(i);
     }
@@ -363,23 +377,13 @@ void hough(int ,void*)
 	
 	final = img1.clone();
 	finalise = img1.clone();
-	/*if (cluster.size()==1)
-	{
-		//zebra crossing is that one only
-		for(int i=0;i<cluster_point[0].size();i++)
-		{
-			Vec4i l = linesP[cluster_point[0][i]];
-        	line( final, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255,0,0), 3, LINE_AA);
-		}
-		//clear_outlier(value[0],value_point[0]);
-		imshow("finalise",final);
-		imshow("final",final);
-	}*/
+
 	if(cluster.size()==0)
 	{
 		//screwed up
 		cout<<"no zebra !!!"<<endl;
 	}
+	
 	else if(cluster.size()>0)
 	{
 		//linefit on each cluster
@@ -461,8 +465,7 @@ void hough(int ,void*)
 		{
 			Vec4i l = linesP[cluster_point[value_point[0]][i]];
         	line( final, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(255,0,0), 3, LINE_AA);
-		}	
-		cout<<"qsdfghjk";
+		}
 		clear_outlier(value[0],value_point[0]);
 		cout<<"outliers"<<value[0]<<"\t"<<value_point[0];
 	}
@@ -479,7 +482,7 @@ void hough(int ,void*)
 
 int main()
 {
-	img = imread("8_2.png",1);
+	img = imread("ideal_zebra3.jpg",1);
 	img1 = img.clone();
 	imshow("input_image",img);
 	//split the image and send the blue part of the image for adaptive
